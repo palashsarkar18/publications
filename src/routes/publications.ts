@@ -111,8 +111,8 @@ export function configurePublicationRoutes(router: Router) {
                 })
                 return Promise.resolve(output);
             })
-            .then(() => {
-                return res.status(200).send({status: 'OK'});
+            .then(output => {
+                return res.status(200).send(output);
             })
             .catch(err => {
                 console.error(err);
