@@ -68,6 +68,17 @@ export function configurePublicationRoutes(router: Router) {
                     return addAuthorsInfoArr(new_author_ids)
                 }
             })
+            .then(newAuthorsResult => {
+                for(const id in newAuthorsResult) {
+                    authors[id] = newAuthorsResult[id];
+                }
+                if(debugStatus) console.log(`authors: ${JSON.stringify(authors)}`);
+                return fetchLastPubId();
+            })
+            .then(max_pubId => {
+                pubId = max_pubId + 1;
+                return insertNewPublication(pubId, title, publish_year);
+            })
             .then(() => {
                 return res.status(200).send({status: 'OK'});
             })
@@ -181,6 +192,34 @@ function addAuthorsInfoArr(author_ids: string[]) {
             .catch(err => {
                 reject(err)
             })
+    })
+}
+
+function fetchLastPubId() {
+    /**
+     * Fetch the last pubId from Publications table
+     */
+    return new Promise<number>((resolve,reject) => {
+        const query = `SELECT MAX(Id) FROM Publications`;
+        fetchData(query)
+            .then(result => {
+                resolve(result[0]['MAX(Id)']);
+            })
+            .catch(err => {
+                reject(err);
+            })
+    })
+}
+
+function insertNewPublication(pubId, title, publish_year) {
+    /**
+     * Add new publication to the publication table
+     */
+    return new Promise<void>((resolve, reject) => {
+        const query = `INSERT INTO Publications (Id, Title, PublishYear) VALUES (${pubId}, "${title}", ${publish_year})`;
+        if(true) console.log(query);
+        db.run(query);
+        resolve();
     })
 }
 
