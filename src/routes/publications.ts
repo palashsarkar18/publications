@@ -58,66 +58,73 @@ export function configurePublicationRoutes(router: Router) {
     router.post<{ Querystring: PublicationsPostQueryRequest }>('/', async (req, res) => {
         const {title, publish_year, author_ids} = req.body;
         let authors: AuthorInfo = {};
-        let pubId = -1;
-        fetchAuthorsInfo(author_ids)
-            .then(authorsResult => {
-                authors = authorsResult;
-                if (Object.keys(authors).length === author_ids.length) {
-                    return Promise.resolve({});
-                } else {
-                    const new_author_ids: string[] = [];
-                    author_ids.forEach(id => {
-                        if (!authors[id]) {
-                            new_author_ids.push(id);
-                        }
-                    });
-                    if (debugStatus) console.log(`Following ids are to be added: ${new_author_ids}`)
-                    return addAuthorsInfoArr(new_author_ids)
-                }
-            })
-            .then(newAuthorsResult => {
-                for(const id in newAuthorsResult) {
-                    authors[id] = newAuthorsResult[id];
-                }
-                if(debugStatus) console.log(`authors: ${JSON.stringify(authors)}`);
-                return fetchLastPubId();
-            })
-            .then(max_pubId => {
-                pubId = max_pubId + 1;
-                return insertNewPublication(pubId, title, publish_year);
-            })
-            .then(() => {
-                return fetchLastAuthorPublicationId();
-            })
-            .then(max_paId => {
-                let paCounter = max_paId + 1;
-                const authors_id = Object.keys(authors);
-                for (let y = 0; y < authors_id.length; y++) {
-                    const paId = paCounter + y;
-                    const query = `INSERT INTO AuthorPublications
-                                (Id, AuthorId, PublicationId) VALUES (${paId + 1}, ${parseInt(authors_id[y])}, ${pubId})`
-                    if (true) console.log(query);
-                    db.run(query);
-                    paCounter = paId;
-                }
-                const output: PublicationsPostQueryResponse = {
-                    id: pubId.toString(),
-                    title: title,
-                    publish_year: publish_year,
-                    authors: []
-                }
-                authors_id.forEach(id => {
-                    output.authors.push(authors[id]);
+        let pubId: number;
+        const isExist = await checkPublicationExist(title, publish_year, author_ids);
+        if(isExist) {
+            const message = `Publication with title ${title}, publish_year ${publish_year} already exists`
+            // message += `and author_ids ${author_ids} already exists`
+            return res.status(400).send({status: message})
+        } else {
+            fetchAuthorsInfo(author_ids)
+                .then(authorsResult => {
+                    authors = authorsResult;
+                    if (Object.keys(authors).length === author_ids.length) {
+                        return Promise.resolve({});
+                    } else {
+                        const new_author_ids: string[] = [];
+                        author_ids.forEach(id => {
+                            if (!authors[id]) {
+                                new_author_ids.push(id);
+                            }
+                        });
+                        if (debugStatus) console.log(`Following ids are to be added: ${new_author_ids}`)
+                        return addAuthorsInfoArr(new_author_ids)
+                    }
                 })
-                return Promise.resolve(output);
-            })
-            .then(output => {
-                return res.status(200).send(output);
-            })
-            .catch(err => {
-                console.error(err);
-                return res.status(500).send({status: 'Internal Server Error'})
-            })
+                .then(newAuthorsResult => {
+                    for(const id in newAuthorsResult) {
+                        authors[id] = newAuthorsResult[id];
+                    }
+                    if(debugStatus) console.log(`authors: ${JSON.stringify(authors)}`);
+                    return fetchLastPubId();
+                })
+                .then(max_pubId => {
+                    pubId = max_pubId + 1;
+                    return insertNewPublication(pubId, title, publish_year);
+                })
+                .then(() => {
+                    return fetchLastAuthorPublicationId();
+                })
+                .then(max_paId => {
+                    let paCounter = max_paId + 1;
+                    const authors_id = Object.keys(authors);
+                    for (let y = 0; y < authors_id.length; y++) {
+                        const paId = paCounter + y;
+                        const query = `INSERT INTO AuthorPublications
+                                (Id, AuthorId, PublicationId) VALUES (${paId + 1}, ${parseInt(authors_id[y])}, ${pubId})`
+                        if (true) console.log(query);
+                        db.run(query);
+                        paCounter = paId;
+                    }
+                    const output: PublicationsPostQueryResponse = {
+                        id: pubId.toString(),
+                        title: title,
+                        publish_year: publish_year,
+                        authors: []
+                    }
+                    authors_id.forEach(id => {
+                        output.authors.push(authors[id]);
+                    })
+                    return Promise.resolve(output);
+                })
+                .then(output => {
+                    return res.status(200).send(output);
+                })
+                .catch(err => {
+                    console.error(err);
+                    return res.status(500).send({status: 'Internal Server Error'})
+                })
+        }
     })
 
     router.get<null, PublicationApiResponse[], null, { PublishYear: string }>('/', async (req, res) => {
@@ -270,6 +277,39 @@ function fetchLastAuthorPublicationId() {
             })
     })
 }
+
+async function checkPublicationExist(title: string, publish_year: number, author_ids: string[]) {
+    /**
+     * Check if a publication with same title, publish_year and authors exist
+     */
+    return new Promise<boolean>((resolve, reject) => {
+        let auth_ids_string_for_query = "";
+        author_ids.forEach(id => {
+            auth_ids_string_for_query += parseInt(id) + ",";
+        })
+        auth_ids_string_for_query = auth_ids_string_for_query.slice(0, -1);
+
+        const queryStr = `SELECT PUB.Title title, PUB.PublishYear publish_year, AUTH.Id id, 
+                PUB.id pubId, AP.PublicationId apId 
+                FROM Publications PUB
+                INNER JOIN AuthorPublications AP ON AP.PublicationId=PUB.Id
+                INNER JOIN Authors AUTH ON AUTH.Id in (${auth_ids_string_for_query})
+                WHERE PublishYear=${publish_year} AND Title="${title}"`
+
+        fetchData(queryStr)
+            .then(result => {
+                console.log(result);
+                if(result.length == 0) {
+                    resolve(false);
+                } else resolve(true);
+            })
+            .catch(err => {
+                reject(err);
+            })
+    })
+
+}
+
 
 
 function fetchData(query: string) {
