@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../database";
+import faker from "faker";
 
 declare interface AuthorTableData {
     id: number,
@@ -15,8 +16,6 @@ declare interface PublicationsPostQueryRequest {
     publish_year: number;
     author_ids: number[];
 }
-
-
 
 declare interface PublicationSqlResponse {
     Id: number;
@@ -54,6 +53,21 @@ export function configurePublicationRoutes(router: Router) {
         let authors: AuthorInfo = {};
         let pubId = -1;
         fetchAuthorsInfo(author_ids)
+            .then(authorsResult => {
+                authors = authorsResult;
+                if (Object.keys(authors).length === author_ids.length) {
+                    return Promise.resolve({});
+                } else {
+                    const new_author_ids: string[] = [];
+                    author_ids.forEach(id => {
+                        if (!authors[id]) {
+                            new_author_ids.push(id);
+                        }
+                    });
+                    if (debugStatus) console.log(`Following ids are to be added: ${new_author_ids}`)
+                    return addAuthorsInfoArr(new_author_ids)
+                }
+            })
             .then(() => {
                 return res.status(200).send({status: 'OK'});
             })
@@ -123,6 +137,49 @@ function fetchAuthorsInfo(author_ids: string[]) {
             })
             .catch(err => {
                 reject(err);
+            })
+    })
+}
+
+function addAuthorsInfo(author_id) {
+    /**
+     * Add authors' info to the Authors table
+     */
+    return new Promise<AuthorTableData>((resolve, reject) => {
+        try {
+            const name = faker.name.findName();
+            const query = `INSERT INTO Authors (Id, Name) VALUES (${author_id}, "${name}");`;
+            if(true) console.log(query);
+            db.run(query);
+            resolve({
+                id: author_id, name
+            });
+        }
+        catch (err) {
+            reject(err);
+        }
+    })
+}
+
+function addAuthorsInfoArr(author_ids: string[]) {
+    /**
+     * Add array of authors' info to the Author table
+     */
+    return new Promise<AuthorInfo>((resolve, reject) => {
+        const new_authors: AuthorInfo = {};
+        const p: Promise<any>[] = [];
+        author_ids.forEach(id => {
+            p.push(addAuthorsInfo(id));
+        })
+        Promise.all(p)
+            .then(authors_arr => {
+                authors_arr.forEach(author => {
+                    new_authors[author.id.toString()] = author
+                });
+                resolve(new_authors);
+            })
+            .catch(err => {
+                reject(err)
             })
     })
 }
