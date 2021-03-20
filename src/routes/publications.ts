@@ -39,20 +39,6 @@ declare interface PublicationApiResponse {
     Authors: { Name: string; Id: number }[];
 }
 
-const debugStatus = false;
-
-/*
-
-curl -X POST -H "Content-Type: application/json" \
--d '{"title": "Lorem ipsum","publish_year": "1999", "author_ids":["5678", "9876"]}' \
-http://localhost:8000/publications
-
-curl -X POST -H "Content-Type: application/json" \
--d '{"title": "Lorem ipsum","publish_year": "1999", "author_ids":["5", "9"]}' \
-http://localhost:8000/publications
-
-*/
-
 export function configurePublicationRoutes(router: Router) {
 
     router.post<{ Querystring: PublicationsPostQueryRequest }>('/', async (req, res) => {
@@ -77,7 +63,6 @@ export function configurePublicationRoutes(router: Router) {
                                 new_author_ids.push(id);
                             }
                         });
-                        if (debugStatus) console.log(`Following ids are to be added: ${new_author_ids}`)
                         return addAuthorsInfoArr(new_author_ids)
                     }
                 })
@@ -85,7 +70,6 @@ export function configurePublicationRoutes(router: Router) {
                     for(const id in newAuthorsResult) {
                         authors[id] = newAuthorsResult[id];
                     }
-                    if(debugStatus) console.log(`authors: ${JSON.stringify(authors)}`);
                     return fetchLastPubId();
                 })
                 .then(max_pubId => {
@@ -102,7 +86,6 @@ export function configurePublicationRoutes(router: Router) {
                         const paId = paCounter + y;
                         const query = `INSERT INTO AuthorPublications
                                 (Id, AuthorId, PublicationId) VALUES (${paId + 1}, ${parseInt(authors_id[y])}, ${pubId})`
-                        if (true) console.log(query);
                         db.run(query);
                         paCounter = paId;
                     }
@@ -177,12 +160,9 @@ function fetchAuthorsInfo(author_ids: string[]) {
         const query = `SELECT Id id, Name name FROM Authors WHERE Id IN (${auth_ids_string_for_query})`
         fetchData(query)
             .then(result => {
-                if(debugStatus) console.log(`result: ${JSON.stringify(result)}`);
                 result.forEach(content => {
-                    if(debugStatus) console.log(`${content.id.toString()} : ${JSON.stringify(content)}`)
                     authors[content.id.toString()] = content;
                 })
-                if(debugStatus) console.log(authors);
                 resolve(authors);
             })
             .catch(err => {
@@ -199,7 +179,6 @@ function addAuthorsInfo(author_id) {
         try {
             const name = faker.name.findName();
             const query = `INSERT INTO Authors (Id, Name) VALUES (${author_id}, "${name}");`;
-            if(true) console.log(query);
             db.run(query);
             resolve({
                 id: author_id, name
@@ -254,9 +233,8 @@ function insertNewPublication(pubId, title, publish_year) {
     /**
      * Add new publication to the publication table
      */
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
         const query = `INSERT INTO Publications (Id, Title, PublishYear) VALUES (${pubId}, "${title}", ${publish_year})`;
-        if(true) console.log(query);
         db.run(query);
         resolve();
     })
@@ -295,10 +273,10 @@ async function checkPublicationExist(title: string, publish_year: number, author
                 INNER JOIN AuthorPublications AP ON AP.PublicationId=PUB.Id
                 INNER JOIN Authors AUTH ON AUTH.Id in (${auth_ids_string_for_query})
                 WHERE PublishYear=${publish_year} AND Title="${title}"`
+        // AND AUTH.Id in (${auth_ids_string_for_query})
 
         fetchData(queryStr)
             .then(result => {
-                console.log(result);
                 if(result.length == 0) {
                     resolve(false);
                 } else resolve(true);
@@ -317,10 +295,8 @@ function fetchData(query: string) {
      * Fetch data from the table mentioned in query
      */
     return new Promise<any>((resolve, reject) => {
-        if(debugStatus) console.log(query);
         db.all(query, (err, row) => {
             if (err) {
-                console.error(err.message);
                 reject(err);
             } else {
                 resolve(row);
