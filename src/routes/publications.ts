@@ -17,6 +17,13 @@ declare interface PublicationsPostQueryRequest {
     author_ids: number[];
 }
 
+declare interface PublicationsPostQueryResponse {
+    id: string,
+    title: string;
+    publish_year: number;
+    authors: AuthorTableData[];
+}
+
 declare interface PublicationSqlResponse {
     Id: number;
     Title: string;
@@ -78,6 +85,31 @@ export function configurePublicationRoutes(router: Router) {
             .then(max_pubId => {
                 pubId = max_pubId + 1;
                 return insertNewPublication(pubId, title, publish_year);
+            })
+            .then(() => {
+                return fetchLastAuthorPublicationId();
+            })
+            .then(max_paId => {
+                let paCounter = max_paId + 1;
+                const authors_id = Object.keys(authors);
+                for (let y = 0; y < authors_id.length; y++) {
+                    const paId = paCounter + y;
+                    const query = `INSERT INTO AuthorPublications
+                                (Id, AuthorId, PublicationId) VALUES (${paId + 1}, ${parseInt(authors_id[y])}, ${pubId})`
+                    if (true) console.log(query);
+                    db.run(query);
+                    paCounter = paId;
+                }
+                const output: PublicationsPostQueryResponse = {
+                    id: pubId.toString(),
+                    title: title,
+                    publish_year: publish_year,
+                    authors: []
+                }
+                authors_id.forEach(id => {
+                    output.authors.push(authors[id]);
+                })
+                return Promise.resolve(output);
             })
             .then(() => {
                 return res.status(200).send({status: 'OK'});
@@ -222,6 +254,23 @@ function insertNewPublication(pubId, title, publish_year) {
         resolve();
     })
 }
+
+function fetchLastAuthorPublicationId() {
+    /**
+     * Fetch the last authorPublication Id from AuthorPublications table
+     */
+    return new Promise<number>((resolve,reject) => {
+        const query = `SELECT MAX(Id) FROM AuthorPublications`;
+        fetchData(query)
+            .then(result => {
+                resolve(result[0]['MAX(Id)']);
+            })
+            .catch(err => {
+                reject(err);
+            })
+    })
+}
+
 
 function fetchData(query: string) {
     /**
