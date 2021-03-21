@@ -146,7 +146,7 @@ export function configurePublicationRoutes(router: Router) {
     });
 }
 
-function fetchAuthorsInfo(author_ids: string[]) {
+function fetchAuthorsInfo(author_ids: string[]): Promise<AuthorInfo> {
     /**
      * Fetch information of authors listed in author_id from Authors table
      */
@@ -171,7 +171,7 @@ function fetchAuthorsInfo(author_ids: string[]) {
     })
 }
 
-function addAuthorsInfo(author_id) {
+function addAuthorsInfo(author_id: number): Promise<AuthorTableData> {
     /**
      * Add authors' info to the Authors table
      */
@@ -190,7 +190,7 @@ function addAuthorsInfo(author_id) {
     })
 }
 
-function addAuthorsInfoArr(author_ids: string[]) {
+function addAuthorsInfoArr(author_ids: string[]): Promise<AuthorInfo> {
     /**
      * Add array of authors' info to the Author table
      */
@@ -198,7 +198,7 @@ function addAuthorsInfoArr(author_ids: string[]) {
         const new_authors: AuthorInfo = {};
         const p: Promise<any>[] = [];
         author_ids.forEach(id => {
-            p.push(addAuthorsInfo(id));
+            p.push(addAuthorsInfo(parseInt(id)));
         })
         Promise.all(p)
             .then(authors_arr => {
@@ -213,7 +213,7 @@ function addAuthorsInfoArr(author_ids: string[]) {
     })
 }
 
-function fetchLastPubId() {
+function fetchLastPubId(): Promise<number> {
     /**
      * Fetch the last pubId from Publications table
      */
@@ -229,7 +229,7 @@ function fetchLastPubId() {
     })
 }
 
-function insertNewPublication(pubId, title, publish_year) {
+function insertNewPublication(pubId: number, title: string, publish_year: number): Promise<void> {
     /**
      * Add new publication to the publication table
      */
@@ -240,7 +240,7 @@ function insertNewPublication(pubId, title, publish_year) {
     })
 }
 
-function fetchLastAuthorPublicationId() {
+function fetchLastAuthorPublicationId(): Promise<number> {
     /**
      * Fetch the last authorPublication Id from AuthorPublications table
      */
@@ -256,7 +256,7 @@ function fetchLastAuthorPublicationId() {
     })
 }
 
-async function checkPublicationExist(title: string, publish_year: number, author_ids: string[]) {
+async function checkPublicationExist(title: string, publish_year: number, author_ids: string[]): Promise<boolean> {
     /**
      * Check if a publication with same title, publish_year and authors exist
      */
@@ -290,7 +290,7 @@ async function checkPublicationExist(title: string, publish_year: number, author
 
 
 
-function fetchData(query: string) {
+function fetchData(query: string): Promise<any> {
     /**
      * Fetch data from the table mentioned in query
      */
