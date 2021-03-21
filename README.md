@@ -52,6 +52,13 @@ if(req.query.publishYear) {
     queryStr += ` WHERE PUB.PublishYear=${req.query.publishYear}`
 }
 ```
+
+## Setup
+```
+npm install
+npm start
+```
+
 ## Data Structure
 * The following interfaces are defined:
     * `PublicationsPostQueryRequest` for the POST parameters
