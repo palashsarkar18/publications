@@ -1,10 +1,10 @@
 
-import faker from 'faker';
+import { faker } from "@faker-js/faker";
 import sqlite3 from 'sqlite3';
 
 export const db = new sqlite3.Database(':memory:');
 
-function getRandomSubarray<T>(arr: T[], size: number) {
+const getRandomSubarray = <T>(arr: T[], size: number) => {
     var shuffled = arr.slice(0), i = arr.length, min = i - size, temp, index;
     while (i-- > min) {
         index = Math.floor((i + 1) * Math.random());
@@ -51,7 +51,7 @@ export const initializeDb = () => {
 
         for(let x = 0; x < 100; x++) {
             const authId = x + 1;
-            const name = faker.name.findName();
+            const name = faker.person.fullName();
             const query = `INSERT INTO Authors (Id, Name) VALUES (${authId}, "${name}");`;
             db.run(query);
 

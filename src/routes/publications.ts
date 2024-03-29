@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../database";
-import faker from "faker";
+import { faker } from "@faker-js/faker";
 
 declare interface AuthorTableData {
     id: number,
@@ -39,7 +39,7 @@ declare interface PublicationApiResponse {
     Authors: { Name: string; Id: number }[];
 }
 
-export function configurePublicationRoutes(router: Router) {
+export const configurePublicationRoutes = (router: Router) => {
 
     router.post<{ Querystring: PublicationsPostQueryRequest }>('/', async (req, res) => {
         const {title, publish_year, author_ids} = req.body;
@@ -146,7 +146,7 @@ export function configurePublicationRoutes(router: Router) {
     });
 }
 
-function fetchAuthorsInfo(author_ids: string[]): Promise<AuthorInfo> {
+const fetchAuthorsInfo = (author_ids: string[]): Promise<AuthorInfo>  => {
     /**
      * Fetch information of authors listed in author_id from Authors table
      */
@@ -171,13 +171,13 @@ function fetchAuthorsInfo(author_ids: string[]): Promise<AuthorInfo> {
     })
 }
 
-function addAuthorsInfo(author_id: number): Promise<AuthorTableData> {
+const addAuthorsInfo = (author_id: number): Promise<AuthorTableData> => {
     /**
      * Add authors' info to the Authors table
      */
     return new Promise<AuthorTableData>((resolve, reject) => {
         try {
-            const name = faker.name.findName();
+            const name = faker.person.fullName();
             const query = `INSERT INTO Authors (Id, Name) VALUES (${author_id}, "${name}");`;
             db.run(query);
             resolve({
@@ -190,7 +190,7 @@ function addAuthorsInfo(author_id: number): Promise<AuthorTableData> {
     })
 }
 
-function addAuthorsInfoArr(author_ids: string[]): Promise<AuthorInfo> {
+const addAuthorsInfoArr = (author_ids: string[]): Promise<AuthorInfo> => {
     /**
      * Add array of authors' info to the Author table
      */
@@ -213,7 +213,7 @@ function addAuthorsInfoArr(author_ids: string[]): Promise<AuthorInfo> {
     })
 }
 
-function fetchLastPubId(): Promise<number> {
+const fetchLastPubId = (): Promise<number> => {
     /**
      * Fetch the last pubId from Publications table
      */
@@ -229,7 +229,7 @@ function fetchLastPubId(): Promise<number> {
     })
 }
 
-function insertNewPublication(pubId: number, title: string, publish_year: number): Promise<void> {
+const insertNewPublication = (pubId: number, title: string, publish_year: number): Promise<void>  => {
     /**
      * Add new publication to the publication table
      */
@@ -240,7 +240,7 @@ function insertNewPublication(pubId: number, title: string, publish_year: number
     })
 }
 
-function fetchLastAuthorPublicationId(): Promise<number> {
+const fetchLastAuthorPublicationId = (): Promise<number> => {
     /**
      * Fetch the last authorPublication Id from AuthorPublications table
      */
@@ -256,16 +256,12 @@ function fetchLastAuthorPublicationId(): Promise<number> {
     })
 }
 
-async function checkPublicationExist(title: string, publish_year: number, author_ids: string[]): Promise<boolean> {
+const checkPublicationExist = async(title: string, publish_year: number, author_ids: string[]): Promise<boolean> => {
     /**
      * Check if a publication with same title, publish_year and authors exist
      */
     return new Promise<boolean>((resolve, reject) => {
-        let auth_ids_string_for_query = "";
-        author_ids.forEach(id => {
-            auth_ids_string_for_query += parseInt(id) + ",";
-        })
-        auth_ids_string_for_query = auth_ids_string_for_query.slice(0, -1);
+        let auth_ids_string_for_query = author_ids.map(id => parseInt(id)).join(",");
 
         const queryStr = `SELECT PUB.Title title, PUB.PublishYear publish_year, AUTH.Id id, 
                 PUB.id pubId, AP.PublicationId apId 
@@ -290,7 +286,7 @@ async function checkPublicationExist(title: string, publish_year: number, author
 
 
 
-function fetchData(query: string): Promise<any> {
+const fetchData = (query: string): Promise<any> => {
     /**
      * Fetch data from the table mentioned in query
      */
