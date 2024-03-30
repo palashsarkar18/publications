@@ -147,6 +147,81 @@ If success, response
 }
 ```
 
+## Running application as docker
+The `Dockerfile` contains the relevant commands to build a Docker image. This file is structured as follows:
 
+1. Build Stage: Installs all dependencies (including devDependencies) and builds the application. For TypeScript projects, this typically involves compiling 
+TypeScript to JavaScript. From the terminal, run the command
+```
+docker build -t publication_dockerized .
+```
 
+2. Run Stage: Creates a lean final image by only including production dependencies and the built application from the first stage.
+```
+docker run -p 3000:8000 publication_dockerized
+```
+Note that the above statement as Port 3000 as the external port (the host machine), and Port 8000 as the internal port (the one the
+application listens to within the container). This was an external port is mapped to an internal port.
 
+## Deploying the application to a Kubernetes cluster
+The dockerized application is deployed in a Kubernetes cluster. In this example, the Kubernetes is running locally on Windows, and Minikube
+is used for the deployment.
+
+Follow the steps:
+
+1. Start the Minikube in a terminal:
+```
+minikube start
+```
+
+2. Set Docker environment to Minikube:
+```
+minikube docker-env | Invoke-Expression
+```
+
+3. Build the docker image
+```
+docker build -t publication_dockerized .
+```
+
+4. Create a Kubernetes deployment
+```
+kubectl apply -f publications-deployment.yaml
+```
+
+5. Expost the deployment as a service
+To access the application fro outside the Kubernetes virtual network, create a service that exposes it:
+```
+kubectl expose deployment publications-deployment --type=NodePort --port=8000
+```
+
+6. Access the application
+Get the URL to access the application
+```
+minikube service publications-deployment --url
+```
+
+## Scaling
+The desired number of replicas could be specified:
+```
+kubectl scale deployment publications-deployment --replicas=3
+```
+Or, update  the `publications-deployment.yaml` file by modifying the `replicas` field, and apply the change:
+```
+kubectl apply -f <your-deployment-file.yaml>
+```
+
+## Autoscaling
+The Horizontal Pod Autoscaler (HPA) can be used for the dynamic scaling based on the actual load. 
+The HPA automatically scales the number of Pod replicas in a deployment based on observed CPU
+utilization or other selectedmetrics.
+
+Ensure that metrics-server is deployed in the cluster:
+```
+minikube addons enable metrics-server
+```
+Then, to automatically scale the deployment based on CPU usage
+```
+kubectl autoscale deployment publications-deployment --cpu-percent=50 --min=1 --max=5
+```
+This example sets the HPA to adjust the number of replicas so that each Pod targets using no more than 50% of its allocated CPU, with a minimum of 1 and a maximum of 5 replicas.
