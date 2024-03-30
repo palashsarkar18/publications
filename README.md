@@ -110,11 +110,26 @@ tasks
   then avoid writing to database.
   
 ## Curl Example
+
+For Unix-like systems,
 ```
 curl -X POST -H "Content-Type: application/json" \
 -d '{"title": "Lorem ipsum","publish_year": "1999", "author_ids":["5678", "9876"]}' \
 http://localhost:8000/publications
 ```
+
+For Windows, 
+```
+$url = "http://localhost:3000/publications"
+$body = '{"title": "Lorem ipsum","publish_year": "1999", "author_ids":["5678", "9876"]}'
+$headers = @{
+    "Content-Type" = "application/json"
+}
+
+$response = Invoke-WebRequest -Uri $url -Method Post -Body $body -Headers $headers
+$response.Content
+```
+
 If success, response
 ```
 {
